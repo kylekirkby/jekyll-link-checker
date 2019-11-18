@@ -66,8 +66,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
  pip3 install wheel && \
  pip3 install ${PIP_PACKAGES}
 
-COPY check-links-3.py check-links.sh /usr/local/bin/
-RUN chmod a+rx /usr/local/bin/check-links-3.py /usr/local/bin/check-links.sh
+COPY check_links.py check-links.sh /usr/local/bin/
+RUN chmod a+rx /usr/local/bin/check_links.py /usr/local/bin/check-links.sh
 
 ################################################################################
 # Record the Bamboo build job (if specified as an argument)
