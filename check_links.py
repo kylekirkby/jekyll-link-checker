@@ -36,7 +36,7 @@ class JekyllLinkChecker:
         self.failed_links = []
         self.unique_links = []
         self.skip_elements = {
-            "a": "#edit_on_github"
+            "a": "edit_on_github"
         }
         self.status_count = 0
         self.html_cache_results = {}
