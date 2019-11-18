@@ -44,7 +44,9 @@ class JekyllLinkChecker:
         self.verbose = 0
         self.output_file = None
         self.args = self.parse_args()
+
         if self.args.db:
+            self.verbose_message("Using SQLite db", 2)
             # Create a new instance of the LinkCheckerDB object
             if self.args.db_file:
                 self.sqlite_database = LinkCheckerDB()
@@ -53,6 +55,14 @@ class JekyllLinkChecker:
         else:
             self.sqlite_database = None
         self.main()
+
+    def verbose_message(self, message, verbose_level):
+        """
+        Prints a message with script verbosity taken into account
+        """
+        if self.verbose >= verbose_level:
+            print(message)
+        return True
 
     def main(self):
         """
@@ -121,16 +131,14 @@ class JekyllLinkChecker:
                 if name.endswith((".html", ".htm")):
                     f = os.path.join(root, name)
                     if f not in result:
-                        if self.verbose >= 3:
-                            print("File scan: adding '%s'" % f)
+                        self.verbose_message("File scan: adding '%s'" % f, 3)
                         result.append(f)
             for d in dirs:
                 files_in_d = self.get_all_html_files(join(root, d))
                 if files_in_d:
                     for f in files_in_d:
                         if f not in result:
-                            if self.verbose >= 3:
-                                print("File scan: adding '%s'" % f)
+                            self.verbose_message("File scan: adding '%s'" % f, 3)
                             result.append(f)
         return result
 
@@ -169,9 +177,7 @@ class JekyllLinkChecker:
         # If we're looking at a directory, make sure there is an index file in it.
         if combined_path[-1] == '/':
             combined_path += "index.html"
-        if self.verbose >= 2:
-            print(("Validating file: constituent parts are '%s' and '%s',"
-                   " combined path is '%s'") % (head, link, combined_path))
+        self.verbose_message("Validating file: constituent parts are {0} and {1} - combined path is {2}".format(head, link, combined_path), 2)
         # needs to be a file or directory ...
         result = os.path.exists(combined_path)
         if result:
@@ -264,8 +270,7 @@ class JekyllLinkChecker:
                             response.status > 499):
                         return self.output_status('.', 0)
                     else:
-                        if self.verbose >= 3:
-                            print(response.status, response.url)
+                        self.verbose_message("{}{}".format(response.status, response.url), 3)
                         # We only really care about full-on failures, i.e. 404.
                         # Other status codes can be returned just because we aren't
                         # using a browser, even if we do provide the agent string
