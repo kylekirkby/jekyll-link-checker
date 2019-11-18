@@ -134,29 +134,34 @@ class JekyllLinkChecker:
                             result.append(f)
         return result
 
-    def validate_file_link(self, filename, text):
+    def validate_file_link(self, filename, link):
+        """
+        Takes a file + link and checks whether the link is valid
+        """
+
         # If there is an anchor (#) in the text, we need to look at what
         # comes before it.
-        text = text.split("#")[0]
-        # If there is a query (?) in the text, we need to look at what
-        # comes before it.
-        text = text.split("?")[0]
-        # If "text" starts with "/" then we need to be looking at the
+        link = link.split("#")[0]
+        # If there is are GET params set (?) in the link, we need to look at what
+        # comes before them.
+        link = link.split("?")[0]
+        # If "link" starts with "/" then we need to be looking at the
         # path relative to where we started scanning.
         #
         # Otherwise, it will be relative to where the current file is
         # located.
-        if text[0] == "/":
+        if link[0] == "/":
             head = "."
         else:
-            # Text will be pointing at a directory or file, relative to
+            # Links will be pointing at a directory or file, relative to
             # where the parent file is living.
             # head gets us the directory where the parent file lives.
             head, tail = os.path.split(filename)
-        if head[-1] != '/' and text[0] != '/':
-            combined_path = "%s/%s" % (head, text)
+        # Get combined relative path to validate
+        if head[-1] != '/' and link[0] != '/':
+            combined_path = "%s/%s" % (head, link)
         else:
-            combined_path = "%s%s" % (head, text)
+            combined_path = "%s%s" % (head, link)
         # If the path contains a double-slash, that works on the OS but not in the
         # browser so we need to explicitly check for it.
         if "//" in combined_path:
@@ -166,7 +171,7 @@ class JekyllLinkChecker:
             combined_path += "index.html"
         if self.verbose >= 2:
             print(("Validating file: constituent parts are '%s' and '%s',"
-                   " combined path is '%s'") % (head, text, combined_path))
+                   " combined path is '%s'") % (head, link, combined_path))
         # needs to be a file or directory ...
         result = os.path.exists(combined_path)
         if result:
@@ -174,41 +179,50 @@ class JekyllLinkChecker:
         else:
             return combined_path
 
-    def matched_skip(self, text, skip_list):
+    def matched_skip(self, link, skip_list):
+        """
+        Checks to see if link is in the skip list
+        """
         if skip_list is not None:
-            for s in skip_list:
-                if text.startswith(s):
+            for skip in skip_list:
+                if link.startswith(skip):
                     return True
         return False
 
-    def validate_link(self, filename, text):
-        # Clean up the text first ...
-        if text is not None:
-            text = text.strip()
-        if text is None or text == "" or text[0] == "#":
-            # or matched_redirect(text):
+    def validate_link(self, filename, link):
+        """
+        Takes a Jekyll filename + link and checks
+        whether the link is valid or not.
+        """
+        # Check if link is valid and return if not
+        if link is None or link == "" or link[0] == "#":
             return None
         else:
+            link = link.strip()
             # Some links don't have the transport on them to ensure that they work
             # whether the user is coming via http or https, so add it if it is
             # missing.
-            if len(text) > 2 and text[:2] == "//":
-                text = "https:" + text
-            # Check the URL to see if it is a web link - that is all we check.
-            o = urlparse(text)
-            if not self.args.noexternal and (o.scheme == "http" or o.scheme == "https"):
+            if len(link) > 2 and link[:2] == "//":
+                link = "https:" + link
+            split_url = urlparse(link)
+            # Check the URL to see if it is an "external" web link
+            if not self.args.noexternal and (split_url.scheme == "http" or split_url.scheme == "https"):
                 # We use "self.file_link_pairs" to track which files reference which
                 # URLs - we only check URLs *once* but then flag up all
                 # refernces to the link.
-                if [filename, text] not in self.file_link_pairs:
-                    self.file_link_pairs.append([filename, text])
+                if [filename, link] not in self.file_link_pairs:
+                    self.file_link_pairs.append([filename, link])
                 # ... only check the links once!
-                if text not in self.unique_links:
-                    self.unique_links.append(text)
-                return None  # Postpone the decision for now ...
-            elif not self.args.nointernal and o.scheme == "":
-                return self.validate_file_link(filename, text)
-            # If skipping stuff, return the answer of no problems ...
+                if link not in self.unique_links:
+                    # Add to the unique_links array
+                    self.unique_links.append(link)
+                # Return None - decision postponed for parallel checking
+                return None
+            # If link doesn't contain a protocol then assume link is internal
+            elif not self.args.nointernal and split_url.scheme == "":
+                # Validate the internal link
+                return self.validate_file_link(filename, link)
+            # Return None "No problems with file"
             return None
 
     def output_status(self, code, value):
