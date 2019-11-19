@@ -23,7 +23,6 @@ from link_db import LinkCheckerDB
 # the results stored. Those results are then used to update the list
 # of filename/link pairs.
 
-
 class JekyllLinkChecker:
     def __init__(self):
         self.CHROME = {
@@ -242,6 +241,9 @@ class JekyllLinkChecker:
         return value
 
     async def async_check_link(self, session, url):
+        """
+        Async method to check whether a link is valid
+        """
         # Check that the host resolves, but only if it isn't in the DNS skip list
         parts = urlparse(url)
         if parts.netloc not in self.dns_skip:
@@ -264,10 +266,12 @@ class JekyllLinkChecker:
                             headers=self.CHROME) as response:
                         if response.status != 404 and response.status != 405:
                             return self.output_status('.', 0)
+                            # LINK OK - add link to db if in use
                         return self.output_status('X', response.status)
                 else:
                     if (response.status < 400 or
                             response.status > 499):
+                        # LINK OK - add link to db if in use
                         return self.output_status('.', 0)
                     else:
                         self.verbose_message("{}{}".format(response.status, response.url), 3)
@@ -304,20 +308,20 @@ class JekyllLinkChecker:
         # the tasks, so loop through the links again and the index counter
         # will point to the corresponding result.
         i = 0
-        for l in links:
-            if l not in self.html_cache_results:
+        for link in links:
+            if link not in self.html_cache_results:
                 if results[i] == 0:
-                    self.html_cache_results[l] = None
+                    self.html_cache_results[link] = None
                 elif results[i] > 0:
-                    self.html_cache_results[l] = "%s [%d]" % (l, results[i])
+                    self.html_cache_results[link] = "%s [%d]" % (link, results[i])
             i += 1
 
-    # Perform an async check of all of the web links we've collected then
-    # build up a list of the affected files for the faulty links.
-
     async def check_unique_links(self):
+        """
+        Perform an async check of all of the web links we've collected then
+        build up a list of the affected files for the faulty links.
+        """
         self.status_count = 1
-
         web_failed_links = []
         print("Checking %s web links ..." % len(self.unique_links))
         # Force IPv4 only to avoid
@@ -330,11 +334,11 @@ class JekyllLinkChecker:
         async with aiohttp.ClientSession(connector=conn,
                                          conn_timeout=60) as session:
             await self.async_check_web(session, self.unique_links)
-        for p in self.file_link_pairs:
+        for pair in self.file_link_pairs:
             # p[0] is the file path and p[1] is the URL.
-            if (p[1] in self.html_cache_results and
-                    self.html_cache_results[p[1]] is not None):
-                error = [p[0], self.html_cache_results[p[1]]]
+            if (pair[1] in self.html_cache_results and
+                    self.html_cache_results[pair[1]] is not None):
+                error = [pair[0], self.html_cache_results[pair[1]]]
                 if error not in web_failed_links:
                     web_failed_links.append(error)
         return web_failed_links
@@ -412,7 +416,6 @@ class JekyllLinkChecker:
         return failure_dict
 
     # Scan the specified directory, ignoring anything that matches skip_list.
-
     def scan_directory(self, path, skip_list):
         """
         Scans a directory for html files to check for broken links
@@ -438,12 +441,15 @@ class JekyllLinkChecker:
                 for broken_link in results:
                     if broken_link not in self.failed_links:
                         self.failed_links.append(broken_link)
-
+        # External Links
         if len(self.unique_links) == 0:
             print("No web links to check.")
         else:
+            # Check the external links
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
+            # Updated unique unchecked links
+            # self.unique_links = self.get_links_from_db(self.unique_links)
             cul_result = loop.run_until_complete(self.check_unique_links())
             loop.close()
             # If we are NOT reporting broken external links as an error,
@@ -485,7 +491,7 @@ class JekyllLinkChecker:
             for ref in failure_dict[file]:
                 print("   %s" % ref)
 
-
+z
 if __name__ == '__main__':
 
     link_checker = JekyllLinkChecker()
