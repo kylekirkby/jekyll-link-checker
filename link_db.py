@@ -1,6 +1,7 @@
 from sqlite3 import Error
 import sqlite3
 import os
+from datetime import datetime
 
 
 class LinkCheckerDB:
@@ -28,6 +29,26 @@ class LinkCheckerDB:
             return conn
         except Error as e:
             print(e)
+
+    def add_update_link(self, link):
+        """
+        Adds a link to the links table
+        """
+        # If the link exists then update the last_checked field
+        check_query = ''' SELECT * FROM links WHERE link=?'''
+        add_query = ''' INSERT INTO links(link,last_checked)
+              VALUES(?,?) '''
+        update_query = ''' INSERT INTO links(link,last_checked)
+              VALUES(?,?) '''
+        cursor = self.connection.cursor()
+        cursor.execute(check_exists_query, (link,))
+        results = cursor.fetchall()
+        if results > 0:
+            # Update timestamp
+        else:
+            # add link
+            current_time = datetime.now()
+            cursor.execute(sql_query, (link, current_time))
 
     def setup_db(self):
         """ Creates the required tables if they don't exist"""
@@ -64,3 +85,4 @@ class LinkCheckerDB:
 if __name__ == "__main__":
     print("Script running as __main__...")
     new_db = LinkCheckerDB()
+    new_db.add_update_link("https://www.linaro.org")
